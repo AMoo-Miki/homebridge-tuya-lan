@@ -1,0 +1,23 @@
+{
+  "name": "homebridge-tuya-lan",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/AMoo-Miki/homebridge-tuya-lan.git"
+  },
+  "author": "AMoo-Miki",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/AMoo-Miki/homebridge-tuya-lan/issues"
+  },
+  "homepage": "https://github.com/AMoo-Miki/homebridge-tuya-lan#readme",
+  "dependencies": {
+    "async": "^2.6.1",
+    "tuyapi": "^3.0.2"
+  }
+}
