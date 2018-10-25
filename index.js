@@ -1,13 +1,13 @@
 const OutletAccessory = require('./lib/OutletAccessory');
 const LightAccessory = require('./lib/LightAccessory');
-const RGBWAccessory = require('./lib/RGBWAccessory');
+const RGBTWAccessory = require('./lib/RGBTWAccessory');
 
 const async = require('async');
 const TuyaDevice = require('tuyapi');
 
 const PLUGIN_NAME = 'homebridge-tuya-lan';
 const PLATFORM_NAME = 'TuyaLan';
-const CLASS_DEF = {outlet: OutletAccessory, light: LightAccessory, rgbw: RGBWAccessory};
+const CLASS_DEF = {outlet: OutletAccessory, light: LightAccessory, rgbtw: RGBTWAccessory};
 
 let Characteristic, PlatformAccessory, Service, Categories, UUID;
 
@@ -37,7 +37,6 @@ class TuyaLan {
             async.retry({
                 errorFilter: function(err) {
                     if (err.message.indexOf('timed out')) {
-                        console.log('Timed out. trying again.');
                         return true;
                     }
                     return false;
@@ -58,6 +57,7 @@ class TuyaLan {
                 const deviceConfig = device.device;
 
                 if (err) {
+                    self.log.debug('Failed to discover', deviceConfig.name);
                     self.removeAccessoryByUUID(deviceConfig.UUID);
 
                     if (deviceConfig.type.toLowerCase() === 'powerstrip' && isFinite(deviceConfig.outlets) && deviceConfig.outlets > 1) {
@@ -66,12 +66,13 @@ class TuyaLan {
                         }
                     }
                 } else {
+                    self.log.debug('Discovered', deviceConfig.name);
                     self.addAccessory(device);
                 }
                 next();
             });
         }, err => {
-            self.log.error('Error discovering devices', err);
+            if (err) self.log.error('Error discovering devices', err);
         });
     }
 
@@ -93,7 +94,7 @@ class TuyaLan {
 
         if (type === 'powerstrip') return this.addPowerStriptAccessory(device);
 
-        this.log.info('Adding accessory', deviceConfig.id);
+        this.log.info('Adding accessory', deviceConfig.name);
 
         const Accessory = CLASS_DEF[deviceConfig.type];
 
@@ -101,15 +102,17 @@ class TuyaLan {
             isCached = true;
 
         if (!accessory) {
+            this.log.debug('New accessory', deviceConfig.name);
             accessory = new PlatformAccessory(deviceConfig.name, deviceConfig.UUID, Accessory.getCategory(Categories));
             accessory.getService(Service.AccessoryInformation)
-                .setCharacteristic(Characteristic.Manufacturer, deviceConfig.manufacturer || PLATFORM_NAME)
+                .setCharacteristic(Characteristic.Manufacturer, PLATFORM_NAME + ' ' + deviceConfig.manufacturer)
                 .setCharacteristic(Characteristic.Model, deviceConfig.model || "Unknown")
                 .setCharacteristic(Characteristic.SerialNumber, deviceConfig.id.slice(8));
 
             isCached = false;
         }
 
+        this.log.debug('Creating', Accessory.constructor.name, 'for', deviceConfig.name);
         this.cachedAccessories.set(deviceConfig.UUID, new Accessory(this, accessory, device, !isCached));
     }
 
@@ -124,7 +127,7 @@ class TuyaLan {
         this.log.info('Removing accessory', homebridgeAccessory.displayName);
 
         delete this.cachedAccessories[homebridgeAccessory.deviceId];
-        this.api.unregisterPlatformAccessories('homebridge-tuya-smart', 'TuyaSmartPlatform', [homebridgeAccessory]);
+        this.api.unregisterPlatformAccessories(PLATFORM_NAME, PLATFORM_NAME, [homebridgeAccessory]);
     }
 
     removeAccessoryByUUID(uuid) {

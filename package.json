@@ -19,5 +19,14 @@
   "dependencies": {
     "async": "^2.6.1",
     "tuyapi": "^3.0.2"
+  },
+  "keywords": [
+    "homebridge-plugin",
+    "lohas",
+    "tuya"
+  ],
+  "engines": {
+    "homebridge": ">=0.4.0",
+    "node": ">=8.0.0"
   }
 }
