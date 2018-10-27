@@ -18,7 +18,7 @@
   "homepage": "https://github.com/AMoo-Miki/homebridge-tuya-lan#readme",
   "dependencies": {
     "async": "^2.6.1",
-    "tuyapi": "^3.0.2"
+    "node-forge": "^0.7.6"
   },
   "keywords": [
     "homebridge-plugin",

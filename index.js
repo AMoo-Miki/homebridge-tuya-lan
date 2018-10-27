@@ -1,9 +1,9 @@
+const TuyaAccessory = require('./lib/TuyaAccessory');
 const OutletAccessory = require('./lib/OutletAccessory');
 const LightAccessory = require('./lib/LightAccessory');
 const RGBTWAccessory = require('./lib/RGBTWAccessory');
 
 const async = require('async');
-const TuyaDevice = require('tuyapi');
 
 const PLUGIN_NAME = 'homebridge-tuya-lan';
 const PLATFORM_NAME = 'TuyaLan';
@@ -12,7 +12,10 @@ const CLASS_DEF = {outlet: OutletAccessory, light: LightAccessory, rgbtw: RGBTWA
 let Characteristic, PlatformAccessory, Service, Categories, UUID;
 
 module.exports = function(homebridge) {
-    ({platformAccessory: PlatformAccessory, hap: {Characteristic, Service, Accessory: {Categories}, uuid: UUID}} = homebridge);
+    ({
+        platformAccessory: PlatformAccessory,
+        hap: {Characteristic, Service, Accessory: {Categories}, uuid: UUID}
+    } = homebridge);
 
     homebridge.registerPlatform(PLUGIN_NAME, PLATFORM_NAME, TuyaLan, true);
 };
@@ -29,51 +32,38 @@ class TuyaLan {
     }
 
     discoverDevices() {
-        const self = this;
-
-        async.each(self.config.devices, (config, next) => {
-            const device = new TuyaDevice({name: config.id.slice(8), ...config, UUID: UUID.generate(config.id)});
-
-            async.retry({
-                errorFilter: function(err) {
-                    if (err.message.indexOf('timed out')) {
-                        return true;
-                    }
-                    return false;
-                },
-                times: 5,
-                interval: function(retryCount) {
-                    return 250 * Math.pow(2, retryCount);
-                }
-            }, callback => {
-                device.resolveId()
-                    .then(() => {
-                        callback();
-                    })
-                    .catch(err => {
-                        callback(err);
-                    });
-            }, err => {
-                const deviceConfig = device.device;
-
-                if (err) {
-                    self.log.debug('Failed to discover', deviceConfig.name);
-                    self.removeAccessoryByUUID(deviceConfig.UUID);
-
-                    if (deviceConfig.type.toLowerCase() === 'powerstrip' && isFinite(deviceConfig.outlets) && deviceConfig.outlets > 1) {
-                        for (let i = 0; i++ < deviceConfig.outlets;) {
-                            self.removeAccessoryByUUID(UUID.generate(config.id + '@' + i));
-                        }
-                    }
-                } else {
-                    self.log.debug('Discovered', deviceConfig.name);
-                    self.addAccessory(device);
-                }
-                next();
-            });
-        }, err => {
-            if (err) self.log.error('Error discovering devices', err);
+        const devices = {};
+        const connectedDevices = [];
+        this.config.devices.forEach(device => {
+            devices[device.id] = device;
         });
+        const deviceIds = Object.keys(devices);
+
+        this.log.debug('Starting discovery...');
+
+        TuyaAccessory.discover({ids: deviceIds})
+            .on('discover', config => {
+                connectedDevices.push(config.id);
+                const device = new TuyaAccessory({name: config.id.slice(8), ...devices[config.id], ...config, UUID: UUID.generate(config.id), connect: false});
+                this.log.debug('Discovered', device.context.name);
+                this.addAccessory(device);
+            });
+
+        setTimeout(() => {
+            deviceIds.forEach(deviceId => {
+                if (connectedDevices.indexOf(deviceId) !== -1) return;
+                const deviceConfig = devices[deviceId];
+
+                this.log.debug('Failed to discover', deviceConfig.name);
+                this.removeAccessoryByUUID(UUID.generate(deviceConfig.id));
+
+                if (deviceConfig.type.toLowerCase() === 'powerstrip' && isFinite(deviceConfig.outlets) && deviceConfig.outlets > 1) {
+                    for (let i = 0; i++ < deviceConfig.outlets;) {
+                        this.removeAccessoryByUUID(UUID.generate(deviceConfig.id + '@' + i));
+                    }
+                }
+            });
+        }, 60000);
     }
 
     registerPlatformAccessories(platformAccessories) {
@@ -84,25 +74,28 @@ class TuyaLan {
         if (accessory instanceof PlatformAccessory) {
             this.cachedAccessories.set(accessory.UUID, accessory);
         } else {
+            this.log.debug('Unregistering', accessory);
             this.api.unregisterPlatformAccessories(PLUGIN_NAME, PLATFORM_NAME, [accessory]);
         }
     }
 
     addAccessory(device) {
-        const deviceConfig = device.device;
+        const deviceConfig = device.context;
         const type = (deviceConfig.type || '').toLowerCase();
 
         if (type === 'powerstrip') return this.addPowerStriptAccessory(device);
 
-        this.log.info('Adding accessory', deviceConfig.name);
+        this.log.info('Adding accessory:', deviceConfig.name);
 
-        const Accessory = CLASS_DEF[deviceConfig.type];
+        const Accessory = CLASS_DEF[type];
+
+        this.log.info('Adding accessory type', type);
 
         let accessory = this.cachedAccessories.get(deviceConfig.UUID),
             isCached = true;
 
         if (!accessory) {
-            this.log.debug('New accessory', deviceConfig.name);
+            this.log.debug('Defining new platform accessory:', deviceConfig.name);
             accessory = new PlatformAccessory(deviceConfig.name, deviceConfig.UUID, Accessory.getCategory(Categories));
             accessory.getService(Service.AccessoryInformation)
                 .setCharacteristic(Characteristic.Manufacturer, PLATFORM_NAME + ' ' + deviceConfig.manufacturer)
@@ -112,7 +105,7 @@ class TuyaLan {
             isCached = false;
         }
 
-        this.log.debug('Creating', Accessory.constructor.name, 'for', deviceConfig.name);
+        this.log.debug('Creating', isCached ? 'cached' : 'new', deviceConfig.name);
         this.cachedAccessories.set(deviceConfig.UUID, new Accessory(this, accessory, device, !isCached));
     }
 
