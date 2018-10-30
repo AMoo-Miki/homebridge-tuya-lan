@@ -1,13 +1,14 @@
 const TuyaAccessory = require('./lib/TuyaAccessory');
 const OutletAccessory = require('./lib/OutletAccessory');
 const LightAccessory = require('./lib/LightAccessory');
+const MultiOutletAccessory = require('./lib/MultiOutletAccessory');
 const RGBTWAccessory = require('./lib/RGBTWAccessory');
 
 const async = require('async');
 
 const PLUGIN_NAME = 'homebridge-tuya-lan';
 const PLATFORM_NAME = 'TuyaLan';
-const CLASS_DEF = {outlet: OutletAccessory, light: LightAccessory, rgbtw: RGBTWAccessory};
+const CLASS_DEF = {outlet: OutletAccessory, light: LightAccessory, rgbtw: RGBTWAccessory, multioutlet: MultiOutletAccessory};
 
 let Characteristic, PlatformAccessory, Service, Categories, UUID;
 
@@ -44,7 +45,7 @@ class TuyaLan {
         TuyaAccessory.discover({ids: deviceIds})
             .on('discover', config => {
                 connectedDevices.push(config.id);
-                const device = new TuyaAccessory({name: config.id.slice(8), ...devices[config.id], ...config, UUID: UUID.generate(config.id), connect: false});
+                const device = new TuyaAccessory({name: config.id.slice(8), ...devices[config.id], ...config, UUID: UUID.generate(PLUGIN_NAME + ':' + config.id), connect: false});
                 this.log.debug('Discovered', device.context.name);
                 this.addAccessory(device);
             });
@@ -55,13 +56,7 @@ class TuyaLan {
                 const deviceConfig = devices[deviceId];
 
                 this.log.debug('Failed to discover', deviceConfig.name);
-                this.removeAccessoryByUUID(UUID.generate(deviceConfig.id));
-
-                if (deviceConfig.type.toLowerCase() === 'powerstrip' && isFinite(deviceConfig.outlets) && deviceConfig.outlets > 1) {
-                    for (let i = 0; i++ < deviceConfig.outlets;) {
-                        this.removeAccessoryByUUID(UUID.generate(deviceConfig.id + '@' + i));
-                    }
-                }
+                this.removeAccessoryByUUID(UUID.generate(PLUGIN_NAME + ':' + deviceConfig.id));
             });
         }, 60000);
     }
@@ -82,8 +77,6 @@ class TuyaLan {
     addAccessory(device) {
         const deviceConfig = device.context;
         const type = (deviceConfig.type || '').toLowerCase();
-
-        if (type === 'powerstrip') return this.addPowerStriptAccessory(device);
 
         this.log.info('Adding accessory:', deviceConfig.name);
 
@@ -107,11 +100,6 @@ class TuyaLan {
 
         this.log.debug('Creating', isCached ? 'cached' : 'new', deviceConfig.name);
         this.cachedAccessories.set(deviceConfig.UUID, new Accessory(this, accessory, device, !isCached));
-    }
-
-    addPowerStriptAccessory(device) {
-        const deviceConfig = device.device;
-        this.log.info('Adding power-strip', deviceConfig.id);
     }
 
     removeAccessory(homebridgeAccessory) {
