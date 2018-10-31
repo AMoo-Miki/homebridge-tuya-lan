@@ -1,7 +1,7 @@
 {
   "name": "homebridge-tuya-lan",
   "version": "1.0.0",
-  "description": "",
+  "description": "Homebridge plugin for IoT devices that use Tuya Smart's platform",
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
@@ -22,11 +22,12 @@
   },
   "keywords": [
     "homebridge-plugin",
+    "homebridge",
     "lohas",
     "tuya"
   ],
   "engines": {
     "homebridge": ">=0.4.0",
-    "node": ">=8.0.0"
+    "node": ">=8.6.0"
   }
 }

@@ -1,14 +1,13 @@
 const TuyaAccessory = require('./lib/TuyaAccessory');
 const OutletAccessory = require('./lib/OutletAccessory');
-const LightAccessory = require('./lib/LightAccessory');
+const SimpleLightAccessory = require('./lib/SimpleLightAccessory');
 const MultiOutletAccessory = require('./lib/MultiOutletAccessory');
-const RGBTWAccessory = require('./lib/RGBTWAccessory');
-
-const async = require('async');
+const RGBTWLightAccessory = require('./lib/RGBTWLightAccessory');
 
 const PLUGIN_NAME = 'homebridge-tuya-lan';
 const PLATFORM_NAME = 'TuyaLan';
-const CLASS_DEF = {outlet: OutletAccessory, light: LightAccessory, rgbtw: RGBTWAccessory, multioutlet: MultiOutletAccessory};
+
+const CLASS_DEF = {outlet: OutletAccessory, simplelight: SimpleLightAccessory, rgbtwlight: RGBTWLightAccessory, multioutlet: MultiOutletAccessory};
 
 let Characteristic, PlatformAccessory, Service, Categories, UUID;
 
@@ -36,27 +35,33 @@ class TuyaLan {
         const devices = {};
         const connectedDevices = [];
         this.config.devices.forEach(device => {
-            devices[device.id] = device;
+            if (/^[0-9a-f]+$/i.test(device.id) &&
+                /^[0-9a-f]+$/i.test(device.key) &&
+                device.type && CLASS_DEF[device.type.toLowerCase()]
+            ) devices[device.id] = {name: device.id.slice(8), ...device};
         });
         const deviceIds = Object.keys(devices);
+        if (deviceIds.length === 0) return this.log.error('No valid configured devices found.');
 
         this.log.debug('Starting discovery...');
 
         TuyaAccessory.discover({ids: deviceIds})
             .on('discover', config => {
                 connectedDevices.push(config.id);
-                const device = new TuyaAccessory({name: config.id.slice(8), ...devices[config.id], ...config, UUID: UUID.generate(PLUGIN_NAME + ':' + config.id), connect: false});
-                this.log.debug('Discovered', device.context.name);
+
+                this.log.debug('Discovered %s (%s)', devices[config.id].name, config.id);
+
+                const device = new TuyaAccessory({...devices[config.id], ...config, UUID: UUID.generate(PLUGIN_NAME + ':' + config.id), connect: false});
                 this.addAccessory(device);
             });
 
         setTimeout(() => {
             deviceIds.forEach(deviceId => {
-                if (connectedDevices.indexOf(deviceId) !== -1) return;
+                if (connectedDevices.includes(deviceId)) return;
                 const deviceConfig = devices[deviceId];
 
-                this.log.debug('Failed to discover', deviceConfig.name);
-                this.removeAccessoryByUUID(UUID.generate(PLUGIN_NAME + ':' + deviceConfig.id));
+                this.log.debug('Failed to discover %s in time but will keep looking.', devices[deviceId].name);
+                //this.removeAccessoryByUUID(UUID.generate(PLUGIN_NAME + ':' + deviceId));
             });
         }, 60000);
     }
@@ -68,8 +73,23 @@ class TuyaLan {
     configureAccessory(accessory) {
         if (accessory instanceof PlatformAccessory) {
             this.cachedAccessories.set(accessory.UUID, accessory);
+            accessory.services.forEach(service => {
+                if (service.UUID === Service.AccessoryInformation.UUID) return;
+                service.characteristics.some(characteristic => {
+                    if (!characteristic.props ||
+                        !Array.isArray(characteristic.props.perms) ||
+                        characteristic.props.perms.length !== 3 ||
+                        !(characteristic.props.perms.includes(Characteristic.Perms.WRITE) && characteristic.props.perms.includes(Characteristic.Perms.NOTIFY))
+                    ) return;
+
+                    this.log.info('Marked %s unreachable by faulting Service.%s.%s', accessory.displayName, service.displayName, characteristic.displayName);
+
+                    characteristic.updateValue(new Error('Unreachable'));
+                    return true;
+                });
+            });
         } else {
-            this.log.debug('Unregistering', accessory);
+            this.log.debug('Unregistering', accessory.displayName);
             this.api.unregisterPlatformAccessories(PLUGIN_NAME, PLATFORM_NAME, [accessory]);
         }
     }
@@ -78,34 +98,26 @@ class TuyaLan {
         const deviceConfig = device.context;
         const type = (deviceConfig.type || '').toLowerCase();
 
-        this.log.info('Adding accessory:', deviceConfig.name);
-
         const Accessory = CLASS_DEF[type];
-
-        this.log.info('Adding accessory type', type);
 
         let accessory = this.cachedAccessories.get(deviceConfig.UUID),
             isCached = true;
 
         if (!accessory) {
-            this.log.debug('Defining new platform accessory:', deviceConfig.name);
             accessory = new PlatformAccessory(deviceConfig.name, deviceConfig.UUID, Accessory.getCategory(Categories));
             accessory.getService(Service.AccessoryInformation)
-                .setCharacteristic(Characteristic.Manufacturer, PLATFORM_NAME + ' ' + deviceConfig.manufacturer)
+                .setCharacteristic(Characteristic.Manufacturer, (PLATFORM_NAME + ' ' + deviceConfig.manufacturer).trim())
                 .setCharacteristic(Characteristic.Model, deviceConfig.model || "Unknown")
                 .setCharacteristic(Characteristic.SerialNumber, deviceConfig.id.slice(8));
 
             isCached = false;
         }
 
-        this.log.debug('Creating', isCached ? 'cached' : 'new', deviceConfig.name);
         this.cachedAccessories.set(deviceConfig.UUID, new Accessory(this, accessory, device, !isCached));
     }
 
     removeAccessory(homebridgeAccessory) {
         if (!homebridgeAccessory) return;
-
-        this.log.info('Removing accessory', homebridgeAccessory.displayName);
 
         delete this.cachedAccessories[homebridgeAccessory.deviceId];
         this.api.unregisterPlatformAccessories(PLATFORM_NAME, PLATFORM_NAME, [homebridgeAccessory]);
