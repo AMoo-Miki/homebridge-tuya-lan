@@ -3,11 +3,18 @@ const OutletAccessory = require('./lib/OutletAccessory');
 const SimpleLightAccessory = require('./lib/SimpleLightAccessory');
 const MultiOutletAccessory = require('./lib/MultiOutletAccessory');
 const RGBTWLightAccessory = require('./lib/RGBTWLightAccessory');
+const AirConditionerAccessory = require('./lib/AirConditionerAccessory');
 
 const PLUGIN_NAME = 'homebridge-tuya-lan';
 const PLATFORM_NAME = 'TuyaLan';
 
-const CLASS_DEF = {outlet: OutletAccessory, simplelight: SimpleLightAccessory, rgbtwlight: RGBTWLightAccessory, multioutlet: MultiOutletAccessory};
+const CLASS_DEF = {
+    outlet: OutletAccessory,
+    simplelight: SimpleLightAccessory,
+    rgbtwlight: RGBTWLightAccessory,
+    multioutlet: MultiOutletAccessory,
+    airconditioner: AirConditionerAccessory
+};
 
 let Characteristic, PlatformAccessory, Service, Categories, UUID;
 
@@ -34,12 +41,17 @@ class TuyaLan {
     discoverDevices() {
         const devices = {};
         const connectedDevices = [];
+        const fakeDevices = [];
         this.config.devices.forEach(device => {
             if (/^[0-9a-f]+$/i.test(device.id) &&
                 /^[0-9a-f]+$/i.test(device.key) &&
                 device.type && CLASS_DEF[device.type.toLowerCase()]
-            ) devices[device.id] = {name: device.id.slice(8), ...device};
+            ) {
+                if (device.fake) fakeDevices.push({name: device.id.slice(8), ...device});
+                else devices[device.id] = {name: device.id.slice(8), ...device};
+            }
         });
+
         const deviceIds = Object.keys(devices);
         if (deviceIds.length === 0) return this.log.error('No valid configured devices found.');
 
@@ -51,14 +63,26 @@ class TuyaLan {
 
                 this.log.debug('Discovered %s (%s)', devices[config.id].name, config.id);
 
-                const device = new TuyaAccessory({...devices[config.id], ...config, UUID: UUID.generate(PLUGIN_NAME + ':' + config.id), connect: false});
+                const device = new TuyaAccessory({
+                    ...devices[config.id], ...config,
+                    UUID: UUID.generate(PLUGIN_NAME + ':' + config.id),
+                    connect: false
+                });
                 this.addAccessory(device);
             });
+
+        fakeDevices.forEach(config => {
+            this.log.debug('Adding fake device: %s', config.name);
+            this.addAccessory(new TuyaAccessory({
+                ...config,
+                UUID: UUID.generate(PLUGIN_NAME + ':fake:' + config.id),
+                connect: false
+            }));
+        });
 
         setTimeout(() => {
             deviceIds.forEach(deviceId => {
                 if (connectedDevices.includes(deviceId)) return;
-                const deviceConfig = devices[deviceId];
 
                 this.log.debug('Failed to discover %s in time but will keep looking.', devices[deviceId].name);
                 //this.removeAccessoryByUUID(UUID.generate(PLUGIN_NAME + ':' + deviceId));
