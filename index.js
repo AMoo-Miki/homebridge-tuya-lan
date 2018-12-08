@@ -55,13 +55,16 @@ class TuyaLan {
         const deviceIds = Object.keys(devices);
         if (deviceIds.length === 0) return this.log.error('No valid configured devices found.');
 
-        this.log.debug('Starting discovery...');
+        this.log.info('Starting discovery...');
 
         TuyaAccessory.discover({ids: deviceIds})
             .on('discover', config => {
+                if (!config || !config.id) return;
+                if (!devices[config.id]) return this.log.warn('Discovered a device that has not been configured yet (%s).', config.id);
+
                 connectedDevices.push(config.id);
 
-                this.log.debug('Discovered %s (%s)', devices[config.id].name, config.id);
+                this.log.info('Discovered %s (%s)', devices[config.id].name, config.id);
 
                 const device = new TuyaAccessory({
                     ...devices[config.id], ...config,
@@ -72,7 +75,7 @@ class TuyaLan {
             });
 
         fakeDevices.forEach(config => {
-            this.log.debug('Adding fake device: %s', config.name);
+            this.log.info('Adding fake device: %s', config.name);
             this.addAccessory(new TuyaAccessory({
                 ...config,
                 UUID: UUID.generate(PLUGIN_NAME + ':fake:' + config.id),
@@ -84,7 +87,7 @@ class TuyaLan {
             deviceIds.forEach(deviceId => {
                 if (connectedDevices.includes(deviceId)) return;
 
-                this.log.debug('Failed to discover %s in time but will keep looking.', devices[deviceId].name);
+                this.log.warn('Failed to discover %s in time but will keep looking.', devices[deviceId].name);
                 //this.removeAccessoryByUUID(UUID.generate(PLUGIN_NAME + ':' + deviceId));
             });
         }, 60000);
@@ -113,7 +116,7 @@ class TuyaLan {
                 });
             });
         } else {
-            this.log.debug('Unregistering', accessory.displayName);
+            this.log.warn('Unregistering', accessory.displayName);
             this.api.unregisterPlatformAccessories(PLUGIN_NAME, PLATFORM_NAME, [accessory]);
         }
     }
