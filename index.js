@@ -4,6 +4,7 @@ const SimpleLightAccessory = require('./lib/SimpleLightAccessory');
 const MultiOutletAccessory = require('./lib/MultiOutletAccessory');
 const RGBTWLightAccessory = require('./lib/RGBTWLightAccessory');
 const AirConditionerAccessory = require('./lib/AirConditionerAccessory');
+const ConvectorAccessory = require('./lib/ConvectorAccessory');
 
 const PLUGIN_NAME = 'homebridge-tuya-lan';
 const PLATFORM_NAME = 'TuyaLan';
@@ -13,7 +14,8 @@ const CLASS_DEF = {
     simplelight: SimpleLightAccessory,
     rgbtwlight: RGBTWLightAccessory,
     multioutlet: MultiOutletAccessory,
-    airconditioner: AirConditionerAccessory
+    airconditioner: AirConditionerAccessory,
+    convector: ConvectorAccessory
 };
 
 let Characteristic, PlatformAccessory, Service, Categories, UUID;
