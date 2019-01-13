@@ -43,13 +43,19 @@ class TuyaLan {
         const connectedDevices = [];
         const fakeDevices = [];
         this.config.devices.forEach(device => {
-            if (/^[0-9a-f]+$/i.test(device.id) &&
-                /^[0-9a-f]+$/i.test(device.key) &&
-                device.type && CLASS_DEF[device.type.toLowerCase()]
-            ) {
-                if (device.fake) fakeDevices.push({name: device.id.slice(8), ...device});
-                else devices[device.id] = {name: device.id.slice(8), ...device};
-            }
+            try {
+                device.id = ('' + device.id).trim();
+                device.key = ('' + device.key).trim();
+                device.type = ('' + device.type).trim();
+            } catch(ex) {}
+
+            //if (!/^[0-9a-f]+$/i.test(device.id)) return this.log.error('%s, id for %s, is not a valid id.', device.id, device.name || 'unnamed device');
+            if (!/^[0-9a-f]+$/i.test(device.key)) return this.log.error('%s, key for %s (%s), is not a valid key.', device.key, device.name || 'unnamed device', device.id);
+            if (!device.type) return this.log.error('%s (%s) doesn\'t have a type defined.', device.name || 'Unnamed device', device.id);
+            if (!CLASS_DEF[device.type.toLowerCase()]) return this.log.error('%s (%s) doesn\'t have a valid type defined.', device.name || 'Unnamed device', device.id);
+
+            if (device.fake) fakeDevices.push({name: device.id.slice(8), ...device});
+            else devices[device.id] = {name: device.id.slice(8), ...device};
         });
 
         const deviceIds = Object.keys(devices);
@@ -87,7 +93,7 @@ class TuyaLan {
             deviceIds.forEach(deviceId => {
                 if (connectedDevices.includes(deviceId)) return;
 
-                this.log.warn('Failed to discover %s in time but will keep looking.', devices[deviceId].name);
+                this.log.warn('Failed to discover %s (%s) in time but will keep looking.', devices[deviceId].name, deviceId);
                 //this.removeAccessoryByUUID(UUID.generate(PLUGIN_NAME + ':' + deviceId));
             });
         }, 60000);
