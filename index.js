@@ -34,6 +34,7 @@ class TuyaLan {
         [this.log, this.config, this.api] = [...props];
 
         this.cachedAccessories = new Map();
+        this.api.hap.EnergyCharacteristics = require('./lib/EnergyCharacteristics')(this.api.hap.Characteristic);
 
         this.api.on('didFinishLaunching', () => {
             this.discoverDevices();
