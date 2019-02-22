@@ -5,6 +5,7 @@ const MultiOutletAccessory = require('./lib/MultiOutletAccessory');
 const RGBTWLightAccessory = require('./lib/RGBTWLightAccessory');
 const AirConditionerAccessory = require('./lib/AirConditionerAccessory');
 const ConvectorAccessory = require('./lib/ConvectorAccessory');
+const GarageDoorAccessory = require('./lib/GarageDoorAccessory');
 
 const PLUGIN_NAME = 'homebridge-tuya-lan';
 const PLATFORM_NAME = 'TuyaLan';
@@ -15,7 +16,8 @@ const CLASS_DEF = {
     rgbtwlight: RGBTWLightAccessory,
     multioutlet: MultiOutletAccessory,
     airconditioner: AirConditionerAccessory,
-    convector: ConvectorAccessory
+    convector: ConvectorAccessory,
+    garagedoor: GarageDoorAccessory
 };
 
 let Characteristic, PlatformAccessory, Service, Categories, UUID;
@@ -138,6 +140,13 @@ class TuyaLan {
 
         let accessory = this.cachedAccessories.get(deviceConfig.UUID),
             isCached = true;
+
+        if (accessory && accessory.category !== Accessory.getCategory(Categories)) {
+            this.log.info("%s has a different type (%s vs %s)", accessory.displayName, accessory.category, Accessory.getCategory(Categories));
+            this.log.warn('Unregistering', accessory.displayName);
+            this.api.unregisterPlatformAccessories(PLUGIN_NAME, PLATFORM_NAME, [accessory]);
+            accessory = null;
+        }
 
         if (!accessory) {
             accessory = new PlatformAccessory(deviceConfig.name, deviceConfig.UUID, Accessory.getCategory(Categories));
