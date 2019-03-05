@@ -1,6 +1,7 @@
 const TuyaAccessory = require('./lib/TuyaAccessory');
 const OutletAccessory = require('./lib/OutletAccessory');
 const SimpleLightAccessory = require('./lib/SimpleLightAccessory');
+const DimmerLightAccessory = require('./lib/DimmerLightAccessory');
 const MultiOutletAccessory = require('./lib/MultiOutletAccessory');
 const RGBTWLightAccessory = require('./lib/RGBTWLightAccessory');
 const AirConditionerAccessory = require('./lib/AirConditionerAccessory');
@@ -13,6 +14,7 @@ const PLATFORM_NAME = 'TuyaLan';
 const CLASS_DEF = {
     outlet: OutletAccessory,
     simplelight: SimpleLightAccessory,
+    dimmerlight: DimmerLightAccessory,
     rgbtwlight: RGBTWLightAccessory,
     multioutlet: MultiOutletAccessory,
     airconditioner: AirConditionerAccessory,
