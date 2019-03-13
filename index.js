@@ -2,6 +2,7 @@ const TuyaAccessory = require('./lib/TuyaAccessory');
 const OutletAccessory = require('./lib/OutletAccessory');
 const SimpleLightAccessory = require('./lib/SimpleLightAccessory');
 const MultiOutletAccessory = require('./lib/MultiOutletAccessory');
+const CustomMultiOutletAccessory = require('./lib/CustomMultiOutletAccessory');
 const RGBTWLightAccessory = require('./lib/RGBTWLightAccessory');
 const AirConditionerAccessory = require('./lib/AirConditionerAccessory');
 const ConvectorAccessory = require('./lib/ConvectorAccessory');
@@ -15,6 +16,7 @@ const CLASS_DEF = {
     simplelight: SimpleLightAccessory,
     rgbtwlight: RGBTWLightAccessory,
     multioutlet: MultiOutletAccessory,
+    custommultioutlet: CustomMultiOutletAccessory,
     airconditioner: AirConditionerAccessory,
     convector: ConvectorAccessory,
     garagedoor: GarageDoorAccessory
