@@ -56,6 +56,8 @@ class TuyaLan {
                 device.id = ('' + device.id).trim();
                 device.key = ('' + device.key).trim();
                 device.type = ('' + device.type).trim();
+
+                device.ip = ('' + (device.ip || '')).trim();
             } catch(ex) {}
 
             //if (!/^[0-9a-f]+$/i.test(device.id)) return this.log.error('%s, id for %s, is not a valid id.', device.id, device.name || 'unnamed device');
@@ -102,7 +104,19 @@ class TuyaLan {
             deviceIds.forEach(deviceId => {
                 if (connectedDevices.includes(deviceId)) return;
 
-                this.log.warn('Failed to discover %s (%s) in time but will keep looking.', devices[deviceId].name, deviceId);
+                if (devices[deviceId].ip) {
+
+                    this.log.info('Failed to discover %s (%s) in time but will connect via %s.', devices[deviceId].name, deviceId, devices[deviceId].ip);
+
+                    const device = new TuyaAccessory({
+                        ...devices[deviceId],
+                        UUID: UUID.generate(PLUGIN_NAME + ':' + deviceId),
+                        connect: false
+                    });
+                    this.addAccessory(device);
+                } else {
+                    this.log.warn('Failed to discover %s (%s) in time but will keep looking.', devices[deviceId].name, deviceId);
+                }
                 //this.removeAccessoryByUUID(UUID.generate(PLUGIN_NAME + ':' + deviceId));
             });
         }, 60000);
