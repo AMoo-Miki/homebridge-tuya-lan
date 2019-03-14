@@ -42,6 +42,8 @@ class TuyaLan {
         this.cachedAccessories = new Map();
         this.api.hap.EnergyCharacteristics = require('./lib/EnergyCharacteristics')(this.api.hap.Characteristic);
 
+        this._expectedUUIDs = this.config.devices.map(device => UUID.generate(PLUGIN_NAME +(device.fake ? ':fake:' : ':') + device.id));
+
         this.api.on('didFinishLaunching', () => {
             this.discoverDevices();
         });
@@ -127,7 +129,7 @@ class TuyaLan {
     }
 
     configureAccessory(accessory) {
-        if (accessory instanceof PlatformAccessory) {
+        if (accessory instanceof PlatformAccessory && this._expectedUUIDs.includes(accessory.UUID)) {
             this.cachedAccessories.set(accessory.UUID, accessory);
             accessory.services.forEach(service => {
                 if (service.UUID === Service.AccessoryInformation.UUID) return;
@@ -145,8 +147,14 @@ class TuyaLan {
                 });
             });
         } else {
-            this.log.warn('Unregistering', accessory.displayName);
-            this.api.unregisterPlatformAccessories(PLUGIN_NAME, PLATFORM_NAME, [accessory]);
+            /*
+             * Irrespective of this unregistering, Homebridge continues
+             * to "_prepareAssociatedHAPAccessory" and "addBridgedAccessory".
+             * This timeout will hopefully remove the accessory after that has happened.
+             */
+            setTimeout(() => {
+                this.removeAccessory(accessory);
+            }, 1000);
         }
     }
 
@@ -161,8 +169,7 @@ class TuyaLan {
 
         if (accessory && accessory.category !== Accessory.getCategory(Categories)) {
             this.log.info("%s has a different type (%s vs %s)", accessory.displayName, accessory.category, Accessory.getCategory(Categories));
-            this.log.warn('Unregistering', accessory.displayName);
-            this.api.unregisterPlatformAccessories(PLUGIN_NAME, PLATFORM_NAME, [accessory]);
+            this.removeAccessory(accessory);
             accessory = null;
         }
 
@@ -180,17 +187,15 @@ class TuyaLan {
     }
 
     removeAccessory(homebridgeAccessory) {
-        if (!homebridgeAccessory) return;
+        if (!homebridgeAccessory) return
 
-        delete this.cachedAccessories[homebridgeAccessory.deviceId];
+        this.log.warn('Unregistering', homebridgeAccessory.displayName);
+
+        delete this.cachedAccessories[homebridgeAccessory.UUID];
         this.api.unregisterPlatformAccessories(PLATFORM_NAME, PLATFORM_NAME, [homebridgeAccessory]);
     }
 
     removeAccessoryByUUID(uuid) {
-        if (!uuid || !this.cachedAccessories.has(uuid)) return;
-
-        this.api.unregisterPlatformAccessories(PLUGIN_NAME, PLATFORM_NAME, [this.cachedAccessories.get(uuid)]);
-
-        this.cachedAccessories.delete(uuid);
+        if (uuid) this.removeAccessory(this.cachedAccessories.get(uuid));
     }
 }
