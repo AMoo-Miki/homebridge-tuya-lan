@@ -187,7 +187,7 @@ class TuyaLan {
     }
 
     removeAccessory(homebridgeAccessory) {
-        if (!homebridgeAccessory) return
+        if (!homebridgeAccessory) return;
 
         this.log.warn('Unregistering', homebridgeAccessory.displayName);
 
