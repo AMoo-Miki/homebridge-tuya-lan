@@ -10,6 +10,7 @@ const ConvectorAccessory = require('./lib/ConvectorAccessory');
 const GarageDoorAccessory = require('./lib/GarageDoorAccessory');
 const SimpleDimmerAccessory = require('./lib/SimpleDimmerAccessory');
 const SimpleBlindsAccessory = require('./lib/SimpleBlindsAccessory');
+const SimpleHeaterAccessory = require('./lib/SimpleHeaterAccessory');
 
 const PLUGIN_NAME = 'homebridge-tuya-lan';
 const PLATFORM_NAME = 'TuyaLan';
@@ -25,7 +26,8 @@ const CLASS_DEF = {
     convector: ConvectorAccessory,
     garagedoor: GarageDoorAccessory,
     simpledimmer: SimpleDimmerAccessory,
-    simpleblinds: SimpleBlindsAccessory
+    simpleblinds: SimpleBlindsAccessory,
+    simpleheater: SimpleHeaterAccessory
 };
 
 let Characteristic, PlatformAccessory, Service, Categories, UUID;
