@@ -6,9 +6,13 @@ const program = require('commander');
 const QRCode = require('qrcode');
 const path = require('path');
 const os = require('os');
-const fs = require('fs');
+const JSON5 = require('json5');
+const fs = require('fs-extra');
+require('debug').disable();
 
 const ROOT = path.resolve(__dirname);
+
+const pemFile = path.join(ROOT, 'certs', 'ca.pem');
 
 let localIPs = [];
 const ifaces = os.networkInterfaces();
@@ -22,8 +26,9 @@ const proxy = Proxy();
 const emitter = new EventEmitter();
 
 program
-    .option('--ip <ip>', 'IP address to bind the proxy to')
-    .option('-p, --port <port>', 'port the proxy should listen on', 8080);
+    .option('--ip <ip>', 'IP address to listen for requests')
+    .option('-p, --port <port>', 'port the proxy should listen on', 8080)
+    .option('--schema', 'include schema in the output');
 
 program.parse(process.argv);
 if (program.ip && localIPs.includes(program.ip)) localIPs = [program.ip];
@@ -31,27 +36,53 @@ if (localIPs.length > 1) {
     console.log(`You have multiple network interfaces: ${localIPs.join(', ')}\nChoose one by passing it with the --ip parameter.\n\nExample: tuya-lan-find --ip ${localIPs[0]}`);
     process.exit();
 }
+const localIPPorts = localIPs.map(ip => `${ip}:${program.port}`);
+
+const escapeUnicode = str => str.replace(/[\u00A0-\uffff]/gu, c => "\\u" + ("000" + c.charCodeAt().toString(16)).slice(-4));
 
 proxy.onError(function(ctx, err) {
-    console.error('Error:', err);
+    switch (err.code) {
+        case 'ERR_STREAM_DESTROYED':
+            return;
+
+        case 'ECONNREFUSED':
+            console.log('Failed to intercept secure communications. This could happen due to bad CA certificate.');
+            return;
+
+        default:
+            console.error('Error:', err);
+    }
 });
 
 proxy.onRequest(function(ctx, callback) {
-    if (ctx.clientToProxyRequest.method === 'GET' && ctx.clientToProxyRequest.url === '/cert' && localIPs.includes(ctx.clientToProxyRequest.headers.host)) {
+    if (ctx.clientToProxyRequest.method === 'GET' && ctx.clientToProxyRequest.url === '/cert' && localIPPorts.includes(ctx.clientToProxyRequest.headers.host)) {
         ctx.use(Proxy.gunzip);
+        console.log('Intercepted certificate request');
 
-        ctx.onResponseData(function(ctx, chunk, callback) {
-            return callback(null, null);
+        ctx.proxyToClientResponse.writeHeader(200, {
+            'Accept-Ranges': 'bytes',
+            'Cache-Control': 'public, max-age=0',
+            'Content-Type': 'application/x-x509-ca-cert',
+            'Content-Disposition': 'attachment; filename=cert.pem',
+            'Content-Transfer-Encoding': 'binary',
+            'Content-Length': fs.statSync(pemFile).size,
+            'Connection': 'keep-alive',
         });
-        ctx.onResponseEnd(function(ctx, callback) {
-            ctx.proxyToClientResponse.writeHeader(200, {
-                'Content-Type': 'application/x-pem-file'
-            });
-            ctx.proxyToClientResponse.write(body);
-            callback();
-        });
+        //ctx.proxyToClientResponse.end(fs.readFileSync(path.join(ROOT, 'certs', 'ca.pem')));
+        ctx.proxyToClientResponse.write(fs.readFileSync(pemFile));
+        ctx.proxyToClientResponse.end();
+
+        return;
+
     } else if (ctx.clientToProxyRequest.method === 'POST' && /tuya/.test(ctx.clientToProxyRequest.headers.host)) {
         ctx.use(Proxy.gunzip);
+
+        ctx.onRequestData(function (ctx, chunk, callback) {
+            return callback(null, chunk);
+        });
+        ctx.onRequestEnd(function (ctx, callback) {
+            callback();
+        });
 
         let chunks = [];
         ctx.onResponseData(function(ctx, chunk, callback) {
@@ -68,6 +99,7 @@ proxy.onRequest(function(ctx, callback) {
 });
 
 emitter.on('tuya-config', body => {
+    if (body.indexOf('tuya.m.my.group.device.list') === -1) return;
     console.log('Intercepted config from Tuya');
     let data;
     const fail = (msg, err) => {
@@ -79,7 +111,6 @@ emitter.on('tuya-config', body => {
     } catch(ex) {
         return fail('There was a problem decoding config:', ex);
     }
-
     if (!Array.isArray(data.result)) return fail('Couldn\'t find a valid result-set.');
 
     let devices = [];
@@ -93,44 +124,61 @@ emitter.on('tuya-config', body => {
 
     if (!Array.isArray(devices)) return fail('Couldn\'t find a good list of devices.');
 
+    console.log(`\nFound ${devices.length} device${devices.length === 1 ? '' : 's'}:`);
+
     const foundDevices = devices.map(device => {
         return {
+            name: device.name,
             id: device.devId,
             key: device.localKey,
-            name: device.name,
             pid: device.productId
         }
     });
 
-    let schemas = [];
-    data.result.some(data => {
-        if (data && data.a === 'tuya.m.device.ref.info.my.list') {
-            schemas = data.result;
-            return true;
-        }
-        return false;
+    if (program.schema) {
+        let schemas = [];
+        data.result.some(data => {
+            if (data && data.a === 'tuya.m.device.ref.info.my.list') {
+                schemas = data.result;
+                return true;
+            }
+            return false;
+        });
+
+        if (Array.isArray(schemas)) {
+            const defs = {};
+            schemas.forEach(schema => {
+                if (schema.id && schema.schemaInfo) {
+                    defs[schema.id] = {};
+                    if (schema.schemaInfo.schema) defs[schema.id].schema = escapeUnicode(schema.schemaInfo.schema);
+                    if (schema.schemaInfo.schemaExt && schema.schemaInfo.schemaExt !== '[]') defs[schema.id].extras = escapeUnicode(schema.schemaInfo.schemaExt);
+                }
+            });
+            foundDevices.forEach(device => {
+                if (defs[device.pid]) device.def = defs[device.pid];
+            });
+        } else console.log('Didn\'t find schema definitions. You will need to identify the data-points manually if this is a new device.');
+    }
+
+    foundDevices.forEach(device => {
+        delete device.pid;
     });
 
-    if (Array.isArray(schemas)) {
-        const defs = {};
-        schemas.forEach(schema => {
-            if (schema.id && schema.schemaInfo) defs[schema.id] = schema.schemaInfo;
-        });
-        foundDevices.forEach(device => {
-            if (defs[device[pid]]) device.def = defs[device[pid]];
-        })
-    } else console.log('Didn\'t find schema definitions. You will need to identify the data-points manually if this is a new device.');
+    console.log(JSON5.stringify(foundDevices, '\n', 2));
 
-    console.log(foundDevices);
+    setTimeout(() => {
+        process.exit(0);
+    }, 5000);
 });
 
-proxy.listen({host: localIPs[0], port: 8080}, () => {
+proxy.listen({port: 8080, sslCaDir: ROOT}, () => {
     let {address, port} = proxy.httpServer.address();
     if (address === '::' || address === '0.0.0.0') address = localIPs[0];
 
     QRCode.toString(`http://${address}:${port}/cert`, {type:'terminal'}, function (err, url) {
         console.log(url);
+        console.log('\nFollow the instructions on https://github.com/AMoo-Miki/homebridge-tuya-lan/wiki/Setup-Instructions');
         console.log(`Proxy IP: ${address}`);
-        console.log(`Proxy Port: ${port}`);
+        console.log(`Proxy Port: ${port}\n\n`);
     })
 });
