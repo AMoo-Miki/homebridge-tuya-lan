@@ -8,7 +8,11 @@ const path = require('path');
 const os = require('os');
 const JSON5 = require('json5');
 const fs = require('fs-extra');
-require('debug').disable();
+
+// Disable debug messages from the proxy
+try {
+    require('debug').disable();
+} catch(ex) {}
 
 const ROOT = path.resolve(__dirname);
 
@@ -29,6 +33,8 @@ program
     .option('--ip <ip>', 'IP address to listen for requests')
     .option('-p, --port <port>', 'port the proxy should listen on', 8080)
     .option('--schema', 'include schema in the output');
+
+program.version('v' + fs.readJSONSync(path.join(ROOT, '../package.json')).version, '-v, --version', 'output package version');
 
 program.parse(process.argv);
 if (program.ip && localIPs.includes(program.ip)) localIPs = [program.ip];
