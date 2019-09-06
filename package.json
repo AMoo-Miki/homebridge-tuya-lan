@@ -25,7 +25,6 @@
     "fs-extra": "^8.1.0",
     "http-mitm-proxy": "^0.8.1",
     "json5": "^2.1.0",
-    "node-forge": "^0.8.5",
     "qrcode": "^1.4.1"
   },
   "keywords": [
