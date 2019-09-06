@@ -1,4 +1,6 @@
 const TuyaAccessory = require('./lib/TuyaAccessory');
+const TuyaDiscovery = require('./lib/TuyaDiscovery');
+
 const OutletAccessory = require('./lib/OutletAccessory');
 const SimpleLightAccessory = require('./lib/SimpleLightAccessory');
 const MultiOutletAccessory = require('./lib/MultiOutletAccessory');
@@ -82,7 +84,7 @@ class TuyaLan {
 
         this.log.info('Starting discovery...');
 
-        TuyaAccessory.discover({ids: deviceIds})
+        TuyaDiscovery.start({ids: deviceIds})
             .on('discover', config => {
                 if (!config || !config.id) return;
                 if (!devices[config.id]) return this.log.warn('Discovered a device that has not been configured yet (%s).', config.id);
@@ -125,7 +127,6 @@ class TuyaLan {
                 } else {
                     this.log.warn('Failed to discover %s (%s) in time but will keep looking.', devices[deviceId].name, deviceId);
                 }
-                //this.removeAccessoryByUUID(UUID.generate(PLUGIN_NAME + ':' + deviceId));
             });
         }, 60000);
     }
