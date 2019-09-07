@@ -93,7 +93,7 @@ class TuyaLan {
 
                 connectedDevices.push(config.id);
 
-                this.log.info('Discovered %s (%s)', devices[config.id].name, config.id);
+                this.log.info('Discovered %s (%s) identified as %s (%s)', devices[config.id].name, config.id, devices[config.id].type, config.version);
 
                 const device = new TuyaAccessory({
                     ...devices[config.id], ...config,
