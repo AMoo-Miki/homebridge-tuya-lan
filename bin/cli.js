@@ -49,6 +49,7 @@ const escapeUnicode = str => str.replace(/[\u00A0-\uffff]/gu, c => "\\u" + ("000
 proxy.onError(function(ctx, err) {
     switch (err.code) {
         case 'ERR_STREAM_DESTROYED':
+        case 'ECONNRESET':
             return;
 
         case 'ECONNREFUSED':
