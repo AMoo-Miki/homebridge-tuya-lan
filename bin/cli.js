@@ -126,7 +126,13 @@ if (program.decode) {           // decode
         process.exit(0);
     });
 } else {                    // find keys
-    if (program.ip && localIPs.includes(program.ip)) localIPs = [program.ip];
+    if (program.ip) {
+        if (localIPs.includes(program.ip)) localIPs = [program.ip];
+        else {
+            console.log(`The requested IP, ${program.ip}, is not a valid external IPv4 address. The valid options are:\n\t${localIPs.join('\n\t')}`);
+            process.exit();
+        }
+    }
     if (localIPs.length > 1) {
         console.log(`You have multiple network interfaces: ${localIPs.join(', ')}\nChoose one by passing it with the --ip parameter.\n\nExample: tuya-lan-find --ip ${localIPs[0]}`);
         process.exit();
@@ -267,7 +273,7 @@ if (program.decode) {           // decode
         }, 5000);
     });
 
-    proxy.listen({port: 8080, sslCaDir: ROOT}, () => {
+    proxy.listen({port: program.port, sslCaDir: ROOT}, () => {
         let {address, port} = proxy.httpServer.address();
         if (address === '::' || address === '0.0.0.0') address = localIPs[0];
 
