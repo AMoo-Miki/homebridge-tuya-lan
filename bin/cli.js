@@ -148,11 +148,15 @@ if (program.decode) {           // decode
                 return;
 
             case 'ECONNREFUSED':
-                console.log('Failed to intercept secure communications. This could happen due to bad CA certificate.');
+                console.error('Failed to intercept secure communications. This could happen due to bad CA certificate.');
+                return;
+
+            case 'EACCES':
+                console.error(`Permission was denied to use port ${program.port}.`);
                 return;
 
             default:
-                console.error('Error:', err);
+                console.error('Error:', err.code, err);
         }
     });
 
@@ -273,7 +277,13 @@ if (program.decode) {           // decode
         }, 5000);
     });
 
-    proxy.listen({port: program.port, sslCaDir: ROOT}, () => {
+    proxy.listen({port: program.port, sslCaDir: ROOT}, err => {
+        if (err) {
+            console.error('Error starting proxy: ' + err);
+            return setTimeout(() => {
+                process.exit(0);
+            }, 5000);
+        }
         let {address, port} = proxy.httpServer.address();
         if (address === '::' || address === '0.0.0.0') address = localIPs[0];
 
