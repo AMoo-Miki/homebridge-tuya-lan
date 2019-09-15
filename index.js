@@ -90,7 +90,7 @@ class TuyaLan {
         TuyaDiscovery.start({ids: deviceIds})
             .on('discover', config => {
                 if (!config || !config.id) return;
-                if (!devices[config.id]) return this.log.warn('Discovered a device that has not been configured yet (%s).', config.id);
+                if (!devices[config.id]) return this.log.warn('Discovered a device that has not been configured yet (%s@%s).', config.id, config.ip);
 
                 connectedDevices.push(config.id);
 
