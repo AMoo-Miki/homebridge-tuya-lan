@@ -7,7 +7,9 @@
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "bin": {
-    "tuya-lan-find": "./bin/cli.js"
+    "tuya-lan": "./bin/cli.js",
+    "tuya-lan-find": "./bin/find.js",
+    "tuya-lan-decode": "./bin/decode.js"
   },
   "repository": {
     "type": "git",
@@ -22,10 +24,14 @@
   "dependencies": {
     "async": "^3.1.0",
     "commander": "^3.0.1",
+    "eshark": "github:hashedhyphen/eshark",
     "fs-extra": "^8.1.0",
     "http-mitm-proxy": "^0.8.1",
     "json5": "^2.1.0",
-    "qrcode": "^1.4.1"
+    "pcap-ng-parser": "^1.0.0",
+    "pcap-parser": "^0.2.1",
+    "qrcode": "^1.4.1",
+    "yaml": "^1.6.0"
   },
   "keywords": [
     "homebridge-plugin",
