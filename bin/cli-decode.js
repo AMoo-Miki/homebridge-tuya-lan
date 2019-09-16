@@ -49,7 +49,7 @@ const checkKey = key => {
     return true;
 };
 
-const decodeLine = (input, log = true) => {
+const decodeLine = (key, input, log = true) => {
     const encoding = (input.substr(0, 8) === '000055aa') ? 'hex' : 'base64';
 
     let buffer = Buffer.from(input, encoding);
@@ -81,7 +81,7 @@ const decodeLine = (input, log = true) => {
         case 13:
         case 16:
             try {
-                const decipher = crypto.createDecipheriv('aes-128-ecb', program.key, '');
+                const decipher = crypto.createDecipheriv('aes-128-ecb', key, '');
                 let decryptedMsg = decipher.update(buffer, 'buffer', 'utf8');
                 decryptedMsg += decipher.final('utf8');
 
@@ -99,7 +99,7 @@ const decodeLine = (input, log = true) => {
         case 19:
             let decryptedMsg;
             try {
-                const decipher = crypto.createDecipheriv('aes-128-ecb', program.key, '');
+                const decipher = crypto.createDecipheriv('aes-128-ecb', key, '');
                 decryptedMsg = decipher.update(buffer, 'buffer', 'utf8');
                 decryptedMsg += decipher.final('utf8');
             } catch (ex) {
@@ -173,7 +173,7 @@ async.auto({
         const rows = packets.toJSON();
 
         Object.keys(rows).forEach(key => {
-            decodeLine(rows[key].replace(/\n/g, ''), false);
+            decodeLine(data.Key, rows[key].replace(/\n/g, ''), false);
         });
 
         next();
@@ -196,7 +196,7 @@ async.auto({
             const input = line.trim();
             if (input.toLowerCase() === 'exit') process.exit(0);
 
-            decodeLine(input);
+            decodeLine(data.Key, input);
 
             rl.prompt();
         }).on('close', () => {
