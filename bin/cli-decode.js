@@ -13,6 +13,7 @@ let file;
 program
     .name('tuya-lan decode')
     .option('--key <key>', 'device key')
+    .option('--use <version>', 'override version string', '3.3')
     .arguments('<file>')
     .action(loc => {
         file = loc;
@@ -72,7 +73,7 @@ const decodeLine = (key, input, log = true) => {
     }
     const flag = buffer.readUInt32BE(16) & 0xFFFFFF00;
     buffer = buffer.slice(len - size + (flag ? 0 : 4), len - 8);
-    if (buffer.indexOf('3.3') !== -1) buffer = buffer.slice(15 + buffer.indexOf('3.3'));
+    if (buffer.indexOf(program.use || '3.3') !== -1) buffer = buffer.slice(15 + buffer.indexOf('3.3'));
 
     switch (cmd) {
         case 7:
