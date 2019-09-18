@@ -81,20 +81,24 @@ const decodeLine = (key, input, log = true) => {
         case 10:
         case 13:
         case 16:
+            if (buffer.length === 0) {
+                console.log(`${('' + seq).padEnd(4)} Decoded ${cmd}> Empty`);
+                break;
+            }
             try {
                 const decipher = crypto.createDecipheriv('aes-128-ecb', key, '');
                 let decryptedMsg = decipher.update(buffer, 'buffer', 'utf8');
                 decryptedMsg += decipher.final('utf8');
 
-                console.log('Decoded >', decryptedMsg);
-                if (log) console.log('Raw >', raw.toString('hex'));
+                console.log(`${('' + seq).padEnd(4)} Decoded ${cmd}>`, decryptedMsg);
+                if (log) console.log(`${('' + seq).padEnd(4)} Raw ${cmd}>`, raw.toString('hex'));
             } catch (ex) {
-                console.log('*Failed >', raw.toString('hex'));
+                console.log(`${('' + seq).padEnd(4)}*Failed ${cmd}>`, raw.toString('hex'));
             }
             break;
 
         case 9:
-            console.log('Decoded >', flag ? 'Ping' : 'Pong');
+            console.log(`${('' + seq).padEnd(4)} Decoded ${cmd}>`, flag ? 'Ping' : 'Pong');
             break;
 
         case 19:
@@ -121,10 +125,10 @@ const decodeLine = (key, input, log = true) => {
 
             try {
                 JSON.parse(decryptedMsg);
-                console.log('Decoded >', decryptedMsg);
-                if (log) console.log('Raw >', raw.toString('hex'));
+                console.log(`${('' + seq).padEnd(4)} Decoded ${cmd}>`, decryptedMsg);
+                if (log) console.log(`${('' + seq).padEnd(4)} Raw ${cmd}>`, raw.toString('hex'));
             } catch (ex) {
-                console.log('*Failed >', raw.toString('hex'));
+                console.log(`${('' + seq).padEnd(4)}*Failed ${cmd}>`, raw.toString('hex'));
             }
             break;
 
