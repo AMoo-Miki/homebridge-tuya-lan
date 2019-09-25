@@ -14,7 +14,7 @@ const GarageDoorAccessory = require('./lib/GarageDoorAccessory');
 const SimpleDimmerAccessory = require('./lib/SimpleDimmerAccessory');
 const SimpleBlindsAccessory = require('./lib/SimpleBlindsAccessory');
 const SimpleHeaterAccessory = require('./lib/SimpleHeaterAccessory');
-const SprinklerAccessory = require('./lib/SprinklerAccessory');
+const ValveAccessory = require('./lib/ValveAccessory');
 
 const PLUGIN_NAME = 'homebridge-tuya-lan';
 const PLATFORM_NAME = 'TuyaLan';
@@ -33,7 +33,7 @@ const CLASS_DEF = {
     simpledimmer: SimpleDimmerAccessory,
     simpleblinds: SimpleBlindsAccessory,
     simpleheater: SimpleHeaterAccessory,
-    sprinkler: SprinklerAccessory
+    watervalve: ValveAccessory
 };
 
 let Characteristic, PlatformAccessory, Service, Categories, UUID;
