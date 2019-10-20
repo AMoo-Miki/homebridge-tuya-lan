@@ -52,6 +52,11 @@ class TuyaLan {
         this.cachedAccessories = new Map();
         this.api.hap.EnergyCharacteristics = require('./lib/EnergyCharacteristics')(this.api.hap.Characteristic);
 
+        if(!this.config || !this.config.devices) {
+            this.log("No devices found. Check that you have specified them in your config.json file.");
+            return false;
+        }
+
         this._expectedUUIDs = this.config.devices.map(device => UUID.generate(PLUGIN_NAME +(device.fake ? ':fake:' : ':') + device.id));
 
         this.api.on('didFinishLaunching', () => {
