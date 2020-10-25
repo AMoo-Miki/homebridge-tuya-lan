@@ -16,6 +16,7 @@ const SimpleBlindsAccessory = require('./lib/SimpleBlindsAccessory');
 const SimpleHeaterAccessory = require('./lib/SimpleHeaterAccessory');
 const ValveAccessory = require('./lib/ValveAccessory');
 const ContactSensorAccessory = require('./lib/ContactSensorAccessory');
+const OilDiffuserAccessory = require('./lib/OilDiffuserAccessory');
 
 const PLUGIN_NAME = 'homebridge-tuya-lan';
 const PLATFORM_NAME = 'TuyaLan';
@@ -35,7 +36,8 @@ const CLASS_DEF = {
     simpleblinds: SimpleBlindsAccessory,
     simpleheater: SimpleHeaterAccessory,
     watervalve: ValveAccessory,
-    contactsensor: ContactSensorAccessory
+    contactsensor: ContactSensorAccessory,
+    oildiffuser: OilDiffuserAccessory
 };
 
 let Characteristic, PlatformAccessory, Service, Categories, UUID;
