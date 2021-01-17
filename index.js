@@ -133,7 +133,7 @@ class TuyaLan {
                     this.log.warn('Failed to discover %s (%s) in time but will keep looking.', devices[deviceId].name, deviceId);
                 }
             });
-        }, 60000);
+        }, 30000);
     }
 
     registerPlatformAccessories(platformAccessories) {
